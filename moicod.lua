@@ -41,38 +41,24 @@ local Settings = {
     esp_enabled = false,
     team_check = true,
     
-    -- Box
+    -- Highlight (вместо Drawing Box)
     box_enabled = true,
     box_color = Color3.fromRGB(255, 255, 255),
-    box_thickness = 1,
     box_transparency = 0,
     
-    -- Fill
-    fill_enabled = false,
+    fill_enabled = true,
     fill_color = Color3.fromRGB(140, 100, 255),
     fill_transparency = 0.5,
     
-    -- Info
+    -- Text
     name_enabled = true,
     name_color = Color3.fromRGB(255, 255, 255),
     distance_enabled = true,
     distance_color = Color3.fromRGB(200, 200, 200),
     
-    -- Health
-    health_enabled = true,
-    
-    -- Tracers
-    tracer_enabled = false,
-    tracer_color = Color3.fromRGB(140, 100, 255),
-    tracer_thickness = 1,
-    tracer_origin = "Bottom", -- Bottom / Mouse
-    
-    -- Skeleton
-    skeleton_enabled = false,
-    skeleton_color = Color3.fromRGB(255, 255, 255),
-    
     -- Local
-    fov = 70
+    fov = 70,
+    ping = 0
 }
 
 -- ================= ОСНОВА UI =================
@@ -212,7 +198,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Логика перетаскивания кнопки "A" (с защитой от свайпа)
+-- Логика перетаскивания кнопки "A"
 local dragging = false
 local dragStart, startPos
 local hasMoved = false
@@ -327,11 +313,11 @@ end
 
 print("[ANON] Part 1 loaded: Core & Theme Ready.")
 -- language: Lua, target: Roblox (ANON Premium UI - Part 2)
--- script: UI Elements (Toggle, Slider, ColorPicker, TextBox)
+-- script: UI Elements (Deep Customization)
 
 -- ================= ЭЛЕМЕНТЫ УПРАВЛЕНИЯ =================
 
--- 1. Карточка (базовая обертка для всех элементов)
+-- 1. Карточка (базовая обертка с эффектом наведения)
 local function CreateCard(parent, height)
     local card = Instance.new("Frame")
     card.Parent = parent
@@ -339,6 +325,7 @@ local function CreateCard(parent, height)
     card.BackgroundColor3 = Theme.Card
     card.BorderSizePixel = 0
     card.ZIndex = 1
+    card.ClipsDescendants = false
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
@@ -349,10 +336,20 @@ local function CreateCard(parent, height)
     stroke.Thickness = 1
     stroke.Parent = card
     
-    return card
+    -- Анимация при наведении (на ПК) или тапе
+    card.MouseEnter:Connect(function()
+        Tween(card, {BackgroundColor3 = Theme.CardHover}, 0.15)
+        Tween(stroke, {Color = Theme.Accent}, 0.15)
+    end)
+    card.MouseLeave:Connect(function()
+        Tween(card, {BackgroundColor3 = Theme.Card}, 0.15)
+        Tween(stroke, {Color = Theme.Stroke}, 0.15)
+    end)
+    
+    return card, stroke
 end
 
--- 2. Заголовок секции (чтобы группировать настройки)
+-- 2. Заголовок секции (группировка)
 local function CreateSection(parent, text)
     local lbl = Instance.new("TextLabel")
     lbl.Parent = parent
@@ -434,7 +431,7 @@ local function CreateToggle(parent, text, state, callback)
     return card
 end
 
--- 4. Slider (Ползунок)
+-- 4. Slider (Ползунок с плавным градиентом)
 local function CreateSlider(parent, text, min, max, initial, callback)
     local card = CreateCard(parent, 52)
     
@@ -479,6 +476,10 @@ local function CreateSlider(parent, text, min, max, initial, callback)
     fill.ZIndex = 3
     local fillCorner = Instance.new("UICorner") fillCorner.CornerRadius = UDim.new(1, 0) fillCorner.Parent = fill
     
+    local fillGradient = Instance.new("UIGradient")
+    fillGradient.Color = ColorSequence.new(Theme.AccentDark, Theme.Accent)
+    fillGradient.Parent = fill
+    
     local knob = Instance.new("Frame")
     knob.Parent = track
     knob.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -488,6 +489,7 @@ local function CreateSlider(parent, text, min, max, initial, callback)
     knob.BorderSizePixel = 0
     knob.ZIndex = 4
     local knobCorner = Instance.new("UICorner") knobCorner.CornerRadius = UDim.new(1, 0) knobCorner.Parent = knob
+    local knobStroke = Instance.new("UIStroke") knobStroke.Color = Theme.Accent knobStroke.Thickness = 2 knobStroke.Parent = knob
 
     local dragging = false
 
@@ -553,7 +555,7 @@ local function CreateColorPicker(parent, text, initialColor, callback)
     local prevCorner = Instance.new("UICorner") prevCorner.CornerRadius = UDim.new(1, 0) prevCorner.Parent = preview
     local prevStroke = Instance.new("UIStroke") prevStroke.Color = Theme.Stroke prevStroke.Parent = preview
     
-    -- Сама палитра (появляется по клику)
+    -- Палитра
     local palette = Instance.new("Frame")
     palette.Parent = card
     palette.Size = UDim2.new(0, 170, 0, 110)
@@ -616,35 +618,30 @@ end
 
 print("[ANON] Part 2 loaded: UI Elements Ready.")
 -- language: Lua, target: Roblox (ANON Premium UI - Part 3)
--- script: Menu Assembly & Advanced ESP Render
+-- script: Menu Assembly & Mobile-Optimized ESP
 
 -- ================= СБОРКА ИНТЕРФЕЙСА =================
 
--- Вкладка 1: ESP
+-- Вкладка 1: Визуалы (ESP)
 local visualPage = CreateTab("Visuals")
 CreateSection(visualPage, "Основные настройки")
 CreateToggle(visualPage, "Включить ESP", Settings.esp_enabled, function(s) Settings.esp_enabled = s end)
 CreateToggle(visualPage, "Team Check (Игнор союзников)", Settings.team_check, function(s) Settings.team_check = s end)
 
 CreateSection(visualPage, "Боксы и Заливка")
-CreateToggle(visualPage, "Боксы (Box)", Settings.box_enabled, function(s) Settings.box_enabled = s end)
-CreateColorPicker(visualPage, "Цвет боксов", Settings.box_color, function(c) Settings.box_color = c end)
+CreateToggle(visualPage, "Боксы (Highlight)", Settings.box_enabled, function(s) Settings.box_enabled = s end)
+CreateColorPicker(visualPage, "Цвет контура", Settings.box_color, function(c) Settings.box_color = c end)
+
 CreateToggle(visualPage, "Заливка (Fill)", Settings.fill_enabled, function(s) Settings.fill_enabled = s end)
 CreateColorPicker(visualPage, "Цвет заливки", Settings.fill_color, function(c) Settings.fill_color = c end)
+CreateSlider(visualPage, "Прозрачность заливки", 0, 1, 0.5, function(v) Settings.fill_transparency = v end)
 
-CreateSection(visualPage, "Информация")
+CreateSection(visualPage, "Текстовая информация")
 CreateToggle(visualPage, "Никнейм", Settings.name_enabled, function(s) Settings.name_enabled = s end)
+CreateColorPicker(visualPage, "Цвет Ника", Settings.name_color, function(c) Settings.name_color = c end)
 CreateToggle(visualPage, "Дистанция", Settings.distance_enabled, function(s) Settings.distance_enabled = s end)
-CreateToggle(visualPage, "Health Bar", Settings.health_enabled, function(s) Settings.health_enabled = s end)
 
-CreateSection(visualPage, "Продвинутое")
-CreateToggle(visualPage, "Tracers (Линии)", Settings.tracer_enabled, function(s) Settings.tracer_enabled = s end)
-CreateColorPicker(visualPage, "Цвет Tracers", Settings.tracer_color, function(c) Settings.tracer_color = c end)
-
-CreateToggle(visualPage, "Skeleton (Скелет)", Settings.skeleton_enabled, function(s) Settings.skeleton_enabled = s end)
-CreateColorPicker(visualPage, "Цвет скелета", Settings.skeleton_color, function(c) Settings.skeleton_color = c end)
-
--- Вкладка 2: Local
+-- Вкладка 2: Локальные настройки (Local)
 local localPage = CreateTab("Local")
 CreateSection(localPage, "Камера")
 CreateSlider(localPage, "Field of View (FOV)", 30, 120, Settings.fov, function(v) 
@@ -652,229 +649,335 @@ CreateSlider(localPage, "Field of View (FOV)", 30, 120, Settings.fov, function(v
     if Workspace.CurrentCamera then Workspace.CurrentCamera.FieldOfView = v end
 end)
 
--- Автоматически открываем первую вкладку
+-- Автоматически открываем первую вкладку при запуске
 if Tabs["Visuals"] then
     Tabs["Visuals"].Button.MouseButton1Click:Fire()
 end
 
--- ================= ПРОДВИНУТАЯ ЛОГИКА ESP =================
-
-local Drawing = Drawing
-local hasDrawing = pcall(function() return Drawing.new("Square") end)
-if not hasDrawing then
-    warn("[ANON] Твой экзекутор не поддерживает Drawing API. ESP не будет работать.")
-    return
-end
+-- ================= ЛОГИКА ESP (BillboardGui & Highlight) =================
 
 local ESP_Cache = {}
 
--- Создаем пул объектов для каждого игрока
-local function CreateESPObjects()
-    return {
-        Box = Drawing.new("Square"),
-        Fill = Drawing.new("Square"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        HealthBg = Drawing.new("Square"),
-        HealthBar = Drawing.new("Square"),
-        Tracer = Drawing.new("Line"),
-        -- Скелет (6 линий: торс, левая рука, правая рука, левая нога, правая нога, голова)
-        Skel1 = Drawing.new("Line"),
-        Skel2 = Drawing.new("Line"),
-        Skel3 = Drawing.new("Line"),
-        Skel4 = Drawing.new("Line"),
-        Skel5 = Drawing.new("Line"),
-        Skel6 = Drawing.new("Line")
-    }
+-- Функция создания визуальных элементов для игрока
+local function CreateESP(player)
+    local char = player.Character
+    if not char then return end
+
+    -- 1. Highlight (Свечение сквозь стены)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ANON_HL"
+    highlight.Adornee = char
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Видно сквозь стены
+    highlight.Enabled = false
+    highlight.Parent = char
+
+    -- 2. BillboardGui (Текст над головой)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ANON_BB"
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = false
+    billboard.Parent = char
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.TextStrokeTransparency = 0
+    text.Font = Enum.Font.GothamBold
+    text.TextSize = 14
+    text.Parent = billboard
+
+    ESP_Cache[player] = { Highlight = highlight, Billboard = billboard, Text = text }
 end
 
-local function UpdateESP()
-    local camera = Workspace.CurrentCamera
-    if not camera then return end
+-- Главный цикл обновления ESP
+RunService.RenderStepped:Connect(function()
+    -- Если ESP выключен, скрываем всё и не нагружаем процессор
+    if not Settings.esp_enabled then
+        for _, esp in pairs(ESP_Cache) do
+            if esp.Highlight then esp.Highlight.Enabled = false end
+            if esp.Billboard then esp.Billboard.Enabled = false end
+        end
+        return
+    end
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local char = player.Character
-            local head = char:FindFirstChild("Head")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChildOfClass("Humanoid")
-            
-            -- Проверка, стоит ли рисовать
-            local isValid = head and hrp and hum and hum.Health > 0
+            local head = char:FindFirstChild("Head")
+
+            -- Проверка на жизнь, наличие частей и команду
+            local isValid = hrp and hum and hum.Health > 0 and head
             if isValid and Settings.team_check and player.Team == LocalPlayer.Team then
                 isValid = false
             end
 
             if isValid then
-                if not ESP_Cache[player] then
-                    ESP_Cache[player] = CreateESPObjects()
+                -- Если объектов еще нет или они удалились при респавне — создаем заново
+                if not ESP_Cache[player] or not char:FindFirstChild("ANON_HL") then
+                    CreateESP(player)
                 end
                 
                 local esp = ESP_Cache[player]
-                
-                -- Перевод 3D координат в 2D экран
-                local headPos, onScreenHead = camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                local rootPos, onScreenRoot = camera:WorldToViewportPoint(hrp.Position)
-                local feetPos, onScreenFeet = camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 2.8, 0))
-                
-                if onScreenHead and onScreenRoot and onScreenFeet then
-                    -- Вычисляем размеры бокса
-                    local height = math.abs(headPos.Y - feetPos.Y)
-                    local width = height / 2
-                    local x = headPos.X - width / 2
-                    local y = headPos.Y
+                if esp and esp.Highlight and esp.Billboard then
+                    -- Настраиваем Highlight (Боксы/Заливка)
+                    esp.Highlight.Enabled = Settings.box_enabled or Settings.fill_enabled
+                    esp.Highlight.OutlineColor = Settings.box_color
+                    esp.Highlight.OutlineTransparency = not Settings.box_enabled and 1 or 0
                     
-                    -- Дистанция до игрока
-                    local dist = 0
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
-                    end
+                    esp.Highlight.FillColor = Settings.fill_color
+                    esp.Highlight.FillTransparency = not Settings.fill_enabled and 1 or Settings.fill_transparency
+
+                    -- Настраиваем текст (Ник и Дистанция)
+                    esp.Billboard.Enabled = Settings.name_enabled or Settings.distance_enabled
+                    esp.Billboard.Adornee = head
                     
-                    -- 1. Боксы
-                    esp.Box.Visible = Settings.box_enabled
-                    if Settings.box_enabled then
-                        esp.Box.Size = Vector2.new(width, height)
-                        esp.Box.Position = Vector2.new(x, y)
-                        esp.Box.Color = Settings.box_color
-                        esp.Box.Thickness = Settings.box_thickness
-                        esp.Box.Filled = false
-                    end
-                    
-                    -- 2. Заливка
-                    esp.Fill.Visible = Settings.fill_enabled
-                    if Settings.fill_enabled then
-                        esp.Fill.Size = Vector2.new(width, height)
-                        esp.Fill.Position = Vector2.new(x, y)
-                        esp.Fill.Color = Settings.fill_color
-                        esp.Fill.Transparency = Settings.fill_transparency
-                        esp.Fill.Filled = true
-                    end
-                    
-                    -- 3. Имя
-                    esp.Name.Visible = Settings.name_enabled
-                    if Settings.name_enabled then
-                        esp.Name.Text = player.Name
-                        esp.Name.Size = 14
-                        esp.Name.Center = true
-                        esp.Name.Outline = true
-                        esp.Name.Color = Settings.name_color
-                        esp.Name.Position = Vector2.new(x + width / 2, y - 16)
-                    end
-                    
-                    -- 4. Дистанция
-                    esp.Distance.Visible = Settings.distance_enabled
-                    if Settings.distance_enabled then
-                        esp.Distance.Text = "[" .. dist .. "m]"
-                        esp.Distance.Size = 12
-                        esp.Distance.Center = true
-                        esp.Distance.Outline = true
-                        esp.Distance.Color = Settings.distance_color
-                        esp.Distance.Position = Vector2.new(x + width / 2, y + height + 2)
-                    end
-                    
-                    -- 5. Health Bar
-                    esp.HealthBg.Visible = Settings.health_enabled
-                    esp.HealthBar.Visible = Settings.health_enabled
-                    if Settings.health_enabled then
-                        local hpPerc = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        local barW = 3
-                        local barH = height
-                        
-                        esp.HealthBg.Size = Vector2.new(barW, barH)
-                        esp.HealthBg.Position = Vector2.new(x - 6, y)
-                        esp.HealthBg.Color = Color3.fromRGB(20, 20, 20)
-                        esp.HealthBg.Filled = true
-                        
-                        esp.HealthBar.Size = Vector2.new(barW, barH * hpPerc)
-                        esp.HealthBar.Position = Vector2.new(x - 6, y + (barH - barH * hpPerc))
-                        esp.HealthBar.Color = Color3.fromRGB(0, 255, 0):Lerp(Color3.fromRGB(255, 0, 0), 1 - hpPerc)
-                        esp.HealthBar.Filled = true
-                    end
-                    
-                    -- 6. Tracers (Линии)
-                    esp.Tracer.Visible = Settings.tracer_enabled
-                    if Settings.tracer_enabled then
-                        esp.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                        esp.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
-                        esp.Tracer.Color = Settings.tracer_color
-                        esp.Tracer.Thickness = Settings.tracer_thickness
-                    end
-                    
-                    -- 7. Skeleton (Скелет)
-                    local skels = {esp.Skel1, esp.Skel2, esp.Skel3, esp.Skel4, esp.Skel5, esp.Skel6}
-                    for _, line in pairs(skels) do line.Visible = Settings.skeleton_enabled end
-                    
-                    if Settings.skeleton_enabled then
-                        -- Ищем части тела (R15 или R6)
-                        local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-                        local lowerTorso = char:FindFirstChild("LowerTorso")
-                        local leftArm = char:FindFirstChild("LeftUpperArm") or char:FindFirstChild("Left Arm")
-                        local rightArm = char:FindFirstChild("RightUpperArm") or char:FindFirstChild("Right Arm")
-                        local leftLeg = char:FindFirstChild("LeftUpperLeg") or char:FindFirstChild("Left Leg")
-                        local rightLeg = char:FindFirstChild("RightUpperLeg") or char:FindFirstChild("Right Leg")
-                        
-                        if upperTorso and leftArm and rightArm and leftLeg and rightLeg then
-                            local utPos = camera:WorldToViewportPoint(upperTorso.Position)
-                            local laPos = camera:WorldToViewportPoint(leftArm.Position)
-                            local raPos = camera:WorldToViewportPoint(rightArm.Position)
-                            local llPos = camera:WorldToViewportPoint(leftLeg.Position)
-                            local rlPos = camera:WorldToViewportPoint(rightLeg.Position)
-                            
-                            -- Голова к торсу
-                            esp.Skel1.From = Vector2.new(headPos.X, headPos.Y)
-                            esp.Skel1.To = Vector2.new(utPos.X, utPos.Y)
-                            -- Торс к рукам
-                            esp.Skel2.From = Vector2.new(utPos.X, utPos.Y)
-                            esp.Skel2.To = Vector2.new(laPos.X, laPos.Y)
-                            esp.Skel3.From = Vector2.new(utPos.X, utPos.Y)
-                            esp.Skel3.To = Vector2.new(raPos.X, raPos.Y)
-                            -- Торс к ногам
-                            esp.Skel4.From = Vector2.new(utPos.X, utPos.Y)
-                            esp.Skel4.To = Vector2.new(llPos.X, llPos.Y)
-                            esp.Skel5.From = Vector2.new(utPos.X, utPos.Y)
-                            esp.Skel5.To = Vector2.new(rlPos.X, rlPos.Y)
-                            
-                            for _, line in pairs(skels) do
-                                line.Color = Settings.skeleton_color
-                                line.Thickness = 1
-                            end
+                    if Settings.name_enabled or Settings.distance_enabled then
+                        local dist = 0
+                        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude)
                         end
+                        
+                        if Settings.name_enabled and Settings.distance_enabled then
+                            esp.Text.Text = player.Name .. " [" .. dist .. "m]"
+                        elseif Settings.name_enabled then
+                            esp.Text.Text = player.Name
+                        elseif Settings.distance_enabled then
+                            esp.Text.Text = "[" .. dist .. "m]"
+                        end
+                        
+                        esp.Text.TextColor3 = Settings.name_color
                     end
-                    
-                else
-                    -- Если цель за экраном, скрываем отрисовку
-                    for _, obj in pairs(esp) do obj.Visible = false end
                 end
             else
-                -- Если игрок мертв
+                -- Если игрок умер или вышел, скрываем его ESP
                 if ESP_Cache[player] then
-                    for _, obj in pairs(ESP_Cache[player]) do obj.Visible = false end
+                    if ESP_Cache[player].Highlight then ESP_Cache[player].Highlight.Enabled = false end
+                    if ESP_Cache[player].Billboard then ESP_Cache[player].Billboard.Enabled = false end
                 end
             end
         end
     end
-end
+end)
 
--- Очистка при выходе игрока
+-- Очистка памяти, когда игрок выходит с сервера
 Players.PlayerRemoving:Connect(function(player)
     if ESP_Cache[player] then
-        for _, obj in pairs(ESP_Cache[player]) do
-            if obj then obj:Remove() end
-        end
+        if ESP_Cache[player].Highlight then ESP_Cache[player].Highlight:Destroy() end
+        if ESP_Cache[player].Billboard then ESP_Cache[player].Billboard:Destroy() end
         ESP_Cache[player] = nil
     end
 end)
 
--- Главный цикл отрисовки (оптимизация)
-RunService.RenderStepped:Connect(function()
-    if not Settings.esp_enabled then
-        for _, esp in pairs(ESP_Cache) do
-            for _, obj in pairs(esp) do obj.Visible = false end
+print("[ANON] Part 3 loaded: Mobile ESP & Menu Online.")
+print("Script successfully executed.")
+-- language: Lua, target: Roblox (ANON Premium UI - Part 4)
+-- script: Advanced WH Features (Tracers, Health, Highlight Depth)
+
+-- ================= ДОБАВЛЯЕМ НОВЫЕ ПЕРЕМЕННЫЕ В НАСТРОЙКИ =================
+-- Так как мы не меняем прошлый код, мы просто добавляем новые ключи в таблицу Settings
+Settings.tracers_enabled = false
+Settings.tracers_color = Color3.fromRGB(255, 255, 255)
+Settings.tracers_thickness = 1
+
+Settings.health_enabled = true
+
+Settings.hl_depth = "AlwaysOnTop" -- AlwaysOnTop / Occluded
+Settings.hl_body_part = "Весь персонаж" -- Весь персонаж / Только голова / Только торс
+
+-- ================= ДОБАВЛЯЕМ ЭЛЕМЕНТЫ В МЕНЮ =================
+-- Находим страницу "Visuals", которую создали в части 3
+if Tabs["Visuals"] then
+    local vPage = Tabs["Visuals"].Page
+    
+    CreateSection(vPage, "Дополнительные фишки")
+    
+    -- 1. Трассеры
+    CreateToggle(vPage, "Tracers (Линии)", Settings.tracers_enabled, function(s) Settings.tracers_enabled = s end)
+    CreateColorPicker(vPage, "Цвет линий", Settings.tracers_color, function(c) Settings.tracers_color = c end)
+    CreateSlider(vPage, "Толщина линий", 1, 5, Settings.tracers_thickness, function(v) Settings.tracers_thickness = v end)
+    
+    -- 2. Полоска здоровья
+    CreateToggle(vPage, "Health Bar над головой", Settings.health_enabled, function(s) Settings.health_enabled = s end)
+
+    -- 3. Настройки Highlight (Глубина и части)
+    CreateSection(vPage, "Настройки Highlight (Боксы)")
+    
+    -- Выбор частей тела для подсветки
+    local partCard = CreateCard(vPage, 38)
+    local partText = Instance.new("TextLabel", partCard)
+    partText.Size = UDim2.new(1, -100, 1, 0)
+    partText.Position = UDim2.new(0, 12, 0, 0)
+    partText.BackgroundTransparency = 1
+    partText.Text = "Подсвечивать: " .. Settings.hl_body_part
+    partText.TextColor3 = Theme.Text
+    partText.Font = Enum.Font.GothamMedium
+    partText.TextSize = 13
+    partText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local partBtn = Instance.new("TextButton", partCard)
+    partBtn.Size = UDim2.new(0, 80, 1, 0)
+    partBtn.Position = UDim2.new(1, -80, 0, 0)
+    partBtn.BackgroundTransparency = 1
+    partBtn.Text = "Сменить"
+    partBtn.TextColor3 = Theme.Accent
+    partBtn.Font = Enum.Font.GothamBold
+    
+    local parts = {"Весь персонаж", "Только голова", "Только торс"}
+    local partIndex = 1
+    
+    partBtn.MouseButton1Click:Connect(function()
+        partIndex = partIndex + 1
+        if partIndex > #parts then partIndex = 1 end
+        Settings.hl_body_part = parts[partIndex]
+        partText.Text = "Подсвечивать: " .. Settings.hl_body_part
+    end)
+
+    -- Выбор глубины (видно сквозь стены или нет)
+    local depthCard = CreateCard(vPage, 38)
+    local depthText = Instance.new("TextLabel", depthCard)
+    depthText.Size = UDim2.new(1, -100, 1, 0)
+    depthText.Position = UDim2.new(0, 12, 0, 0)
+    depthText.BackgroundTransparency = 1
+    depthText.Text = "Режим: " .. Settings.hl_depth
+    depthText.TextColor3 = Theme.Text
+    depthText.Font = Enum.Font.GothamMedium
+    depthText.TextSize = 13
+    depthText.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local depthBtn = Instance.new("TextButton", depthCard)
+    depthBtn.Size = UDim2.new(0, 80, 1, 0)
+    depthBtn.Position = UDim2.new(1, -80, 0, 0)
+    depthBtn.BackgroundTransparency = 1
+    depthBtn.Text = "Сменить"
+    depthBtn.TextColor3 = Theme.Accent
+    depthBtn.Font = Enum.Font.GothamBold
+    
+    depthBtn.MouseButton1Click:Connect(function()
+        if Settings.hl_depth == "AlwaysOnTop" then
+            Settings.hl_depth = "Occluded"
+        else
+            Settings.hl_depth = "AlwaysOnTop"
         end
-        return
+        depthText.Text = "Режим: " .. Settings.hl_depth
+    end)
+end
+
+-- ================= ЛОГИКА ДЛЯ НОВЫХ ФИШЕК =================
+
+-- Обновляем функцию CreateESP, чтобы добавить Health Bar и Tracers
+-- Мы не перезаписываем старую, а создаем прослойку
+local old_CreateESP = CreateESP
+CreateESP = function(player)
+    old_CreateESP(player) -- Вызываем старую логику (Highlight и Ник)
+    
+    local char = player.Character
+    if not char or not ESP_Cache[player] then return end
+    
+    -- 1. Создаем Health Bar (BillboardGui)
+    local healthGui = Instance.new("BillboardGui")
+    healthGui.Name = "ANON_HB"
+    healthGui.Size = UDim2.new(0, 50, 0, 6)
+    healthGui.StudsOffset = Vector3.new(0, 2.2, 0)
+    healthGui.AlwaysOnTop = true
+    healthGui.Enabled = false
+    healthGui.Parent = char
+    
+    local bg = Instance.new("Frame", healthGui)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    bg.BorderSizePixel = 0
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame", bg)
+    fill.Size = UDim2.new(1, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    fill.BorderSizePixel = 0
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    ESP_Cache[player].HealthGui = healthGui
+    ESP_Cache[player].HealthFill = fill
+    
+    -- 2. Создаем Tracers (Lines)
+    local tracer = Drawing.new("Line")
+    tracer.Visible = false
+    tracer.Thickness = 1
+    ESP_Cache[player].Tracer = tracer
+end
+
+-- Перехватываем рендер-цикл (RunService), чтобы обновлять новые фишки
+local old_RenderStepped = RunService.RenderStepped
+RunService.RenderStepped:Connect(function()
+    if not Settings.esp_enabled then return end
+    
+    local camera = Workspace.CurrentCamera
+    
+    for player, esp in pairs(ESP_Cache) do
+        if player.Character and player.Character:FindFirstChild("Head") then
+            local char = player.Character
+            local head = char:FindFirstChild("Head")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            
+            -- Обновляем Highlight (Глубина и части тела)
+            if esp.Highlight then
+                if Settings.hl_depth == "AlwaysOnTop" then
+                    esp.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                else
+                    esp.Highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+                end
+                
+                if Settings.hl_body_part == "Только голова" then
+                    esp.Highlight.Adornee = head
+                elseif Settings.hl_body_part == "Только торс" then
+                    esp.Highlight.Adornee = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char
+                else
+                    esp.Highlight.Adornee = char
+                end
+            end
+            
+            -- Обновляем Health Bar
+            if esp.HealthGui and esp.HealthFill and hum then
+                esp.HealthGui.Enabled = Settings.health_enabled
+                local hpPerc = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                esp.HealthFill.Size = UDim2.new(hpPerc, 0, 1, 0)
+                -- Меняем цвет от красного к зеленому
+                esp.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hpPerc)
+            end
+            
+            -- Обновляем Tracers (Линии)
+            if esp.Tracer then
+                esp.Tracer.Visible = Settings.tracers_enabled
+                if Settings.tracers_enabled then
+                    local headPos, onScreen = camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        esp.Tracer.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
+                        esp.Tracer.To = Vector2.new(headPos.X, headPos.Y)
+                        esp.Tracer.Color = Settings.tracers_color
+                        esp.Tracer.Thickness = Settings.tracers_thickness
+                        esp.Tracer.Visible = true
+                    else
+                        esp.Tracer.Visible = false
+                    end
+                end
+            end
+            
+        else
+            -- Скрываем, если персонаж умер/вышел
+            if esp.HealthGui then esp.HealthGui.Enabled = false end
+            if esp.Tracer then esp.Tracer.Visible = false end
+        end
     end
-    UpdateESP()
 end)
 
-print("[ANON] Part 3 loaded: Full UI & ESP Online.")
-print("Script successfully executed. Press 'A' to toggle menu.")
+-- Очистка памяти при выходе игрока
+Players.PlayerRemoving:Connect(function(player)
+    if ESP_Cache[player] then
+        if ESP_Cache[player].HealthGui then ESP_Cache[player].HealthGui:Destroy() end
+        if ESP_Cache[player].Tracer then ESP_Cache[player].Tracer:Remove() end
+    end
+end)
+
+print("[ANON] Part 4 loaded: Advanced WH Features (Tracers, Health, Highlight Parts) Online.")
